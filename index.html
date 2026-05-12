@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>국내 PE 상위 50개사 통합 인텔리전스 대시보드 v3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; background: #f5f6fa; color: #1a1d29; line-height: 1.5; font-size: 14px; }
+.container { max-width: 1480px; margin: 0 auto; padding: 24px 28px 60px; }
+.header { background: linear-gradient(135deg, #1a2744 0%, #2c3e5d 100%); color: #fff; padding: 28px 32px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 14px rgba(26,39,68,0.12); }
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 6px; }
+.header .subtitle { font-size: 13px; opacity: 0.85; }
+.header .meta { font-size: 12px; opacity: 0.7; margin-top: 12px; }
+
+/* TOC */
+.toc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.toc a { font-size: 12px; padding: 7px 13px; background: #fff; border: 1px solid #d0d6e2; border-radius: 18px; color: #1a2744; text-decoration: none; font-weight: 500; transition: all 0.15s; }
+.toc a:hover { background: #1a2744; color: #fff; border-color: #1a2744; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.kpi { background: #fff; padding: 18px 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 3px solid #1a2744; }
+.kpi .label { font-size: 12px; color: #5a6378; font-weight: 500; margin-bottom: 8px; }
+.kpi .value { font-size: 24px; font-weight: 700; color: #1a2744; letter-spacing: -0.5px; }
+.kpi .note { font-size: 11px; color: #8089a0; margin-top: 4px; }
+.kpi.accent-1 { border-left-color: #1a2744; }
+.kpi.accent-2 { border-left-color: #2c7a7b; }
+.kpi.accent-3 { border-left-color: #b7791f; }
+.kpi.accent-4 { border-left-color: #742a2a; }
+
+.section { background: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); scroll-margin-top: 20px; }
+.section-title { font-size: 15px; font-weight: 700; color: #1a2744; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #e3e7f0; display: flex; align-items: center; justify-content: space-between; }
+.section-title .badge { font-size: 11px; background: #eef2f9; color: #4a5378; padding: 3px 10px; border-radius: 12px; font-weight: 500; }
+.section-subtitle { font-size: 11.5px; color: #5a6378; margin-bottom: 14px; line-height: 1.6; }
+
+/* Generic tables */
+.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl thead th { background: #1a2744; color: #fff; padding: 9px 11px; text-align: left; font-weight: 600; font-size: 11.5px; }
+.tbl thead th.num { text-align: right; }
+.tbl tbody td { padding: 8px 11px; border-bottom: 1px solid #eef2f9; vertical-align: middle; }
+.tbl tbody tr:hover { background: #fafbfd; }
+
+/* League Table */
+.rank-cell { font-weight: 700; color: #1a2744; width: 56px; text-align: center; }
+.rank-medal { display: inline-block; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-size: 12px; font-weight: 700; }
+.rank-1 { background: linear-gradient(135deg, #d4a017, #b7791f); color: #fff; }
+.rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: #fff; }
+.rank-3 { background: linear-gradient(135deg, #b87333, #92400e); color: #fff; }
+.name-cell { font-weight: 600; color: #1a2744; min-width: 170px; }
+.name-en { font-size: 11px; color: #8089a0; font-weight: 400; display: block; margin-top: 2px; }
+.amt-cell { text-align: right; font-weight: 700; color: #2c7a7b; font-variant-numeric: tabular-nums; font-size: 13.5px; }
+.amt-detail { text-align: right; color: #5a6378; font-size: 11px; font-variant-numeric: tabular-nums; }
+.type-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: 500; white-space: nowrap; }
+.type-domestic { background: #e6f3f3; color: #2c7a7b; }
+.type-global { background: #fef3e6; color: #b7791f; }
+.type-captive { background: #f0e6f3; color: #6b46c1; }
+.change-up { color: #c0392b; font-weight: 600; }
+.change-down { color: #2c7a7b; font-weight: 600; }
+.change-same { color: #8089a0; }
+.bar-bg { background: #eef2f9; height: 6px; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: linear-gradient(90deg, #1a2744, #2c7a7b); border-radius: 3px; }
+
+.chart-wrap { position: relative; height: 480px; }
+.chart-wrap-sm { position: relative; height: 280px; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+/* Heatmap */
+.heatmap { display: grid; gap: 2px; font-size: 11px; }
+.heatmap .hm-header { display: grid; grid-template-columns: 180px repeat(10, 1fr); gap: 2px; }
+.heatmap .hm-header div { padding: 8px 6px; background: #1a2744; color: #fff; font-weight: 600; text-align: center; font-size: 10.5px; }
+.heatmap .hm-header div:first-child { text-align: left; }
+.heatmap .hm-row { display: grid; grid-template-columns: 180px repeat(10, 1fr); gap: 2px; }
+.heatmap .hm-row > .hm-name { background: #f5f6fa; padding: 8px 10px; font-weight: 600; color: #1a2744; display: flex; align-items: center; font-size: 11.5px; }
+.heatmap .hm-cell { background: #fff; padding: 8px 4px; text-align: center; border: 1px solid #eef2f9; color: #2a2f3e; font-weight: 600; font-size: 11px; }
+.hm-cell.h0 { background: #fff; color: #d0d6e2; }
+.hm-cell.h1 { background: #e6f3f3; color: #2c7a7b; }
+.hm-cell.h2 { background: #b8dcdc; color: #1a4f4f; }
+.hm-cell.h3 { background: #6fa8a8; color: #fff; }
+.hm-cell.h4 { background: #2c7a7b; color: #fff; }
+.hm-cell.h5 { background: #1a4f4f; color: #fff; }
+
+/* Strategy badges */
+.strat-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.strat-badge { font-size: 10px; padding: 2px 7px; border-radius: 9px; font-weight: 500; white-space: nowrap; }
+.strat-mega { background: #1a2744; color: #fff; }
+.strat-mid { background: #2c7a7b; color: #fff; }
+.strat-growth { background: #b7791f; color: #fff; }
+.strat-mezz { background: #6b46c1; color: #fff; }
+.strat-distress { background: #742a2a; color: #fff; }
+.strat-xb { background: #fef3e6; color: #b7791f; border: 1px solid #b7791f; }
+.strat-act { background: #fbe4e4; color: #742a2a; border: 1px solid #742a2a; }
+.strat-infra { background: #e6e9f5; color: #1a2744; border: 1px solid #1a2744; }
+
+/* Hall of Fame cards */
+.hof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.hof-card { background: linear-gradient(135deg, #fff 0%, #fafbfd 100%); border: 1px solid #e3e7f0; border-radius: 8px; padding: 14px 16px; border-left: 4px solid #b7791f; }
+.hof-card .hof-title { font-size: 14px; font-weight: 700; color: #1a2744; }
+.hof-card .hof-gp { font-size: 11px; color: #2c7a7b; font-weight: 600; margin-top: 2px; }
+.hof-card .hof-metric { display: flex; gap: 10px; margin-top: 10px; align-items: baseline; }
+.hof-card .hof-moic { font-size: 22px; font-weight: 700; color: #b7791f; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.hof-card .hof-label { font-size: 10px; color: #5a6378; }
+.hof-card .hof-note { font-size: 11.5px; color: #5a6378; margin-top: 8px; line-height: 1.5; }
+
+/* Risk flags */
+.risk-card { background: #fff; border: 1px solid #e3e7f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; border-left: 4px solid #b7791f; }
+.risk-card.red { border-left-color: #c0392b; }
+.risk-card.yellow { border-left-color: #b7791f; }
+.risk-card.info { border-left-color: #5a6378; }
+.risk-card .risk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.risk-card .risk-gp { font-size: 14px; font-weight: 700; color: #1a2744; }
+.risk-flag { font-size: 10px; padding: 3px 9px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.flag-red { background: #fbe4e4; color: #c0392b; border: 1px solid #c0392b; }
+.flag-yellow { background: #fff3d9; color: #b7791f; border: 1px solid #b7791f; }
+.flag-info { background: #eef2f9; color: #5a6378; border: 1px solid #5a6378; }
+.risk-card .risk-body { font-size: 12px; color: #2a2f3e; line-height: 1.55; }
+.risk-card .risk-body strong { color: #1a2744; }
+
+/* Fundraising tracker */
+.fr-prog-wrap { background: #eef2f9; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.fr-prog-fill { height: 100%; background: linear-gradient(90deg, #2c7a7b, #1a2744); }
+.fr-status { font-size: 10px; padding: 2px 7px; border-radius: 9px; font-weight: 500; }
+.fr-status.open { background: #e6f3f3; color: #2c7a7b; }
+.fr-status.clos1 { background: #fff3d9; color: #b7791f; }
+.fr-status.target { background: #eef2f9; color: #5a6378; }
+
+/* Detail cards (existing) */
+.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.controls input, .controls select { padding: 8px 12px; border: 1px solid #d0d6e2; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; color: #1a1d29; }
+.controls input { min-width: 240px; }
+.controls .lbl { font-size: 12px; color: #5a6378; font-weight: 500; }
+.tier-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.tier-tab { padding: 7px 14px; background: #eef2f9; border: 1px solid transparent; border-radius: 6px; font-size: 12px; font-weight: 500; color: #4a5378; cursor: pointer; transition: all 0.15s; }
+.tier-tab:hover { background: #dde5f0; }
+.tier-tab.active { background: #1a2744; color: #fff; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+.card { background: #fff; border: 1px solid #e3e7f0; border-radius: 8px; padding: 16px 18px; transition: all 0.15s; }
+.card:hover { box-shadow: 0 4px 12px rgba(26,39,68,0.08); border-color: #c9d3e3; }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eef2f9; }
+.card-rank { font-size: 11px; background: #1a2744; color: #fff; padding: 3px 9px; border-radius: 12px; font-weight: 700; margin-right: 8px; }
+.card-name { font-size: 15px; font-weight: 700; color: #1a2744; margin-bottom: 2px; }
+.card-name-en { font-size: 11px; color: #8089a0; font-weight: 400; }
+.card-aum { text-align: right; flex-shrink: 0; }
+.card-aum .num { font-size: 18px; font-weight: 700; color: #2c7a7b; }
+.card-aum .unit { font-size: 11px; color: #5a6378; }
+.card-section { margin-bottom: 9px; }
+.card-section .label { font-size: 11px; color: #5a6378; font-weight: 600; letter-spacing: 0.3px; margin-bottom: 4px; text-transform: uppercase; }
+.card-section .content { font-size: 12.5px; color: #2a2f3e; line-height: 1.55; }
+.card-section .content strong { color: #1a2744; font-weight: 600; }
+.deals-list { list-style: none; margin-top: 2px; }
+.deals-list li { font-size: 12px; padding: 3px 0; color: #2a2f3e; display: flex; gap: 8px; }
+.deals-list li::before { content: "▸"; color: #8089a0; flex-shrink: 0; }
+.deals-list .deal-name { font-weight: 600; color: #1a2744; }
+.deals-list .deal-meta { color: #5a6378; font-size: 11px; }
+.aum-na { color: #8089a0; font-size: 13px; }
+
+.note-box { background: #fff8e6; border-left: 3px solid #b7791f; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: #4a5378; margin-top: 16px; line-height: 1.6; }
+.note-box strong { color: #1a2744; }
+
+footer { text-align: center; font-size: 11px; color: #8089a0; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e3e7f0; line-height: 1.7; }
+
+@media (max-width: 1100px) { .heatmap .hm-header, .heatmap .hm-row { grid-template-columns: 130px repeat(10, 1fr); } }
+@media (max-width: 980px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .two-col, .three-col { grid-template-columns: 1fr; } .card-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>국내 사모펀드(PE) 상위 50개사 통합 인텔리전스 대시보드 <span style="font-size:13px; opacity:0.7;">v3 · LP 실사용</span></h1>
+  <div class="subtitle">시장 매크로 · 2025 리그테이블 · 투자전략 프로파일링 · 펀드레이징 트래커 · Exit Hall of Fame · 리스크 트래커 · GP 상세현황</div>
+  <div class="meta">데이터 기준일: 2024년말 ~ 2025년 상반기 | 출처: 금감원 PEF 공시, 헤럴드경제, 아시아경제, 더벨, 인베스트조선, KDI, KVCA 등 | 작성: 2026.05.12</div>
+</div>
+
+<div class="toc">
+  <a href="#macro">시장 매크로</a>
+  <a href="#league">2025 리그테이블</a>
+  <a href="#aumchart">AUM 분포</a>
+  <a href="#strategy">투자전략 프로파일링</a>
+  <a href="#fundraise">펀드레이징 트래커</a>
+  <a href="#exit">Exit Hall of Fame</a>
+  <a href="#risk">리스크 트래커</a>
+  <a href="#detail">GP 상세현황</a>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi accent-1"><div class="label">국내 PEF 시장 규모</div><div class="value">153.6<span style="font-size:14px;color:#5a6378;">조원</span></div><div class="note">2024년말 약정총액 / 이행 117.5조</div></div>
+  <div class="kpi accent-2"><div class="label">등록 PEF 수</div><div class="value">1,137<span style="font-size:14px;color:#5a6378;">개</span></div><div class="note">기관전용 PEF (2024년말)</div></div>
+  <div class="kpi accent-3"><div class="label">1조원 이상 대형 GP</div><div class="value">40<span style="font-size:14px;color:#5a6378;">개사</span></div><div class="note">2024년 / 전년 +3곳</div></div>
+  <div class="kpi accent-4"><div class="label">현재 모집 중 펀드</div><div class="value">9<span style="font-size:14px;color:#5a6378;">개+</span></div><div class="note">목표 합계 약 11조원+</div></div>
+</div>
+
+<!-- ============== 1. Market Macro ============== -->
+<div class="section" id="macro">
+  <div class="section-title">① 시장 매크로 (KOR PEF Market Trend) <span class="badge">금감원·KVCA·KDI</span></div>
+  <div class="section-subtitle">국내 기관전용 PEF 시장 규모 추이 및 회수 채널 mix. 2024년 약정총액 153.6조원으로 사상 최대 갱신.</div>
+  <div class="two-col">
+    <div>
+      <h4 style="font-size:12px; color:#5a6378; margin-bottom:8px; font-weight:600;">▣ 국내 PEF 약정총액 추이 (단위: 조원)</h4>
+      <div class="chart-wrap-sm"><canvas id="macroChart"></canvas></div>
+    </div>
+    <div>
+      <h4 style="font-size:12px; color:#5a6378; margin-bottom:8px; font-weight:600;">▣ 1조원 이상 대형 GP 수 추이</h4>
+      <div class="chart-wrap-sm"><canvas id="bigGpChart"></canvas></div>
+    </div>
+  </div>
+  <div class="three-col" style="margin-top:18px;">
+    <div style="background:#f5f6fa; padding:14px 16px; border-radius:8px;">
+      <div style="font-size:11px;color:#5a6378;font-weight:600;">2024년 신규 약정 (전년대비)</div>
+      <div style="font-size:22px;font-weight:700;color:#1a2744;margin-top:4px;">약 18조원 <span style="font-size:12px;color:#2c7a7b;">▲ +12%</span></div>
+      <div style="font-size:11px;color:#5a6378;margin-top:4px;">2023년 약 16조원 → 2024년 약 18조원</div>
+    </div>
+    <div style="background:#f5f6fa; padding:14px 16px; border-radius:8px;">
+      <div style="font-size:11px;color:#5a6378;font-weight:600;">2024년 회수금액</div>
+      <div style="font-size:22px;font-weight:700;color:#1a2744;margin-top:4px;">약 12조원 <span style="font-size:12px;color:#c0392b;">▼ -8%</span></div>
+      <div style="font-size:11px;color:#5a6378;margin-top:4px;">금리 환경·매각 부진 영향</div>
+    </div>
+    <div style="background:#f5f6fa; padding:14px 16px; border-radius:8px;">
+      <div style="font-size:11px;color:#5a6378;font-weight:600;">회수채널 mix (2024)</div>
+      <div style="font-size:12px;color:#1a2744;margin-top:8px;line-height:1.7;">M&A 매각 <strong>약 55%</strong><br>IPO <strong>약 20%</strong><br>세컨더리·리캡 <strong>약 25%</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== 2. League Table ============== -->
+<div class="section" id="league">
+  <div class="section-title">② 2025년 국내 PE 운용사 약정총액 리그테이블 Top 20 <span class="badge">2024년말 ~ 2025년 상반기</span></div>
+  <table class="tbl">
+    <thead><tr><th>순위</th><th>운용사</th><th>구분</th><th class="num">약정총액</th><th class="num" style="width:240px;">규모 비교</th><th>전년 대비</th><th>창업자/대표</th></tr></thead>
+    <tbody id="leagueTableBody"></tbody>
+  </table>
+</div>
+
+<!-- ============== 3. AUM Chart ============== -->
+<div class="section" id="aumchart">
+  <div class="section-title">③ AUM 분포 (상위 50개사) <span class="badge">막대그래프</span></div>
+  <div class="chart-wrap"><canvas id="aumChart"></canvas></div>
+</div>
+
+<!-- ============== 4. Strategy Profiling ============== -->
+<div class="section" id="strategy">
+  <div class="section-title">④ 투자전략 프로파일링 (Sector Exposure × Strategy Mix) <span class="badge">신규 v3</span></div>
+  <div class="section-subtitle">GP별 섹터 집중도(히트맵), 전략 분류(메가 buyout / 미드캡 / 그로스 등), 평균 deal size, Cross-border 비중을 한눈에 파악. 보도된 포트폴리오 기준 분류.</div>
+
+  <h4 style="font-size:13px;color:#1a2744;margin:8px 0 10px;font-weight:700;">▣ 상위 20개사 섹터 익스포저 히트맵</h4>
+  <div style="overflow-x:auto;">
+    <div class="heatmap" id="heatmap"></div>
+  </div>
+  <div style="display:flex; gap:14px; margin-top:10px; font-size:11px; color:#5a6378; align-items:center;">
+    <span>강도:</span>
+    <span class="hm-cell h0" style="padding:3px 8px;">無</span>
+    <span class="hm-cell h1" style="padding:3px 8px;">★</span>
+    <span class="hm-cell h2" style="padding:3px 8px;">★★</span>
+    <span class="hm-cell h3" style="padding:3px 8px;">★★★</span>
+    <span class="hm-cell h4" style="padding:3px 8px;">★★★★</span>
+    <span class="hm-cell h5" style="padding:3px 8px;">★★★★★</span>
+    <span style="margin-left:14px;">(★=주요 포트폴리오 사례 1건, 별이 많을수록 해당 섹터 비중 高)</span>
+  </div>
+
+  <h4 style="font-size:13px;color:#1a2744;margin:24px 0 10px;font-weight:700;">▣ GP별 전략 분류 · 평균 Deal Size · Cross-border 비중</h4>
+  <table class="tbl">
+    <thead><tr><th>운용사</th><th>주력 전략 (배지)</th><th>평균 Deal Size</th><th>Cross-border</th><th>대표 섹터</th></tr></thead>
+    <tbody id="strategyTableBody"></tbody>
+  </table>
+
+  <div class="two-col" style="margin-top:20px;">
+    <div>
+      <h4 style="font-size:13px;color:#1a2744;margin:0 0 10px;font-weight:700;">▣ 전략별 GP 분포</h4>
+      <div class="chart-wrap-sm"><canvas id="strategyChart"></canvas></div>
+    </div>
+    <div>
+      <h4 style="font-size:13px;color:#1a2744;margin:0 0 10px;font-weight:700;">▣ 섹터별 GP 노출 수</h4>
+      <div class="chart-wrap-sm"><canvas id="sectorChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== 5. Fundraising Tracker ============== -->
+<div class="section" id="fundraise">
+  <div class="section-title">⑤ 펀드레이징 라이브 트래커 <span class="badge">현재 모집 중 / 결성 추진</span></div>
+  <div class="section-subtitle">보도 시점 기준 모집 중이거나 1차 클로징을 마친 블라인드 펀드. 자사 출자 검토 대상 GP 추적용.</div>
+  <table class="tbl">
+    <thead><tr><th>운용사</th><th>펀드명/호수</th><th class="num">목표 사이즈</th><th class="num">진척률</th><th>주요 Anchor LP·전략</th><th>상태</th></tr></thead>
+    <tbody id="fundraiseTableBody"></tbody>
+  </table>
+  <div class="note-box">※ 본 트래커는 공개 보도 기반이며, 펀드별 정확한 모집 진행률은 LP 실사 면담에서 GP에 직접 확인 권장. 1차 클로징 완료 펀드는 통상 추가 출자 가능 시점이 1~6개월 이내로 신속한 의사결정이 필요함.</div>
+</div>
+
+<!-- ============== 6. Exit Hall of Fame ============== -->
+<div class="section" id="exit">
+  <div class="section-title">⑥ Exit Hall of Fame (대표 회수 사례) <span class="badge">MOIC·IRR 보도 기준</span></div>
+  <div class="section-subtitle">최근 10년간 한국 PE 시장에서 보도된 대표 Exit 사례. GP의 가치창출(value creation) 능력 평가 참고용.</div>
+  <div class="hof-grid" id="hofGrid"></div>
+</div>
+
+<!-- ============== 7. Risk Tracker ============== -->
+<div class="section" id="risk">
+  <div class="section-title">⑦ 리스크 트래커 (Yellow / Red Flag 모니터링) <span class="badge">LP 실사 체크리스트</span></div>
+  <div class="section-subtitle">공개 보도된 GP 관련 분쟁·제재·청산·핵심인력 이슈. 출자심사 시 추가 확인 필요 항목.</div>
+  <div id="riskList"></div>
+  <div class="note-box">※ 본 자료는 공개 보도 기반이며, 실제 GP의 적격성 판단은 자사 내부 출자심사 기준과 KIC/공제회 평가의견을 종합하여 결정 권장. Yellow/Red flag가 곧 출자 부적격을 의미하지 않으며, 사안의 종결 여부·재발 가능성·GP 대응을 종합 평가해야 함.</div>
+</div>
+
+<!-- ============== 8. Detail Cards ============== -->
+<div class="section" id="detail">
+  <div class="section-title">⑧ PE 운용사 상세 카드 (창업자·대표·주요 인력·포트폴리오) <span class="badge">검색·필터 가능</span></div>
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="운용사명·창업자·포트폴리오로 검색...">
+    <span class="lbl">정렬:</span>
+    <select id="sortSelect">
+      <option value="rank">순위순</option>
+      <option value="aum">AUM 큰 순</option>
+      <option value="name">운용사명 가나다순</option>
+    </select>
+  </div>
+  <div class="tier-tabs">
+    <div class="tier-tab active" data-tier="all">전체 50</div>
+    <div class="tier-tab" data-tier="tier1">Tier 1 (1~10위)</div>
+    <div class="tier-tab" data-tier="tier2">Tier 2 (11~25위)</div>
+    <div class="tier-tab" data-tier="tier3">Tier 3 (26~40위)</div>
+    <div class="tier-tab" data-tier="tier4">Tier 4 (41~50위)</div>
+    <div class="tier-tab" data-tier="global">글로벌 PE 한국</div>
+  </div>
+  <div class="card-grid" id="cardGrid"></div>
+</div>
+
+<footer>
+  본 자료는 공개된 언론보도 및 공시자료를 바탕으로 작성된 참고자료이며, 투자판단의 근거자료가 아닙니다.<br>
+  주요 출처: 금융감독원 PEF 공시(FSS), 아시아경제 「사모펀드 약정액 순위」, 헤럴드경제, 더벨, 인베스트조선, 한국금융신문, 딜사이트, 블로터, KVCA, KDI, 각사 IR.
+</footer>
+
+</div>
+
+<script>
+// ============= Market Macro Data =============
+const macroYears = ['2020','2021','2022','2023','2024'];
+const macroAmounts = [97.1, 116.1, 125.3, 140.0, 153.6];
+const bigGpCounts = [27, 31, 34, 37, 40];
+
+new Chart(document.getElementById('macroChart'), {
+  type: 'bar',
+  data: { labels: macroYears, datasets: [{ label:'PEF 약정총액(조원)', data: macroAmounts, backgroundColor: '#1a2744', borderRadius:3 }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, title:{display:true,text:'조원',color:'#5a6378'}, grid:{color:'#eef2f9'}}, x:{grid:{display:false}}}}
+});
+new Chart(document.getElementById('bigGpChart'), {
+  type: 'line',
+  data: { labels: macroYears, datasets: [{ label:'1조원+ GP', data: bigGpCounts, borderColor:'#2c7a7b', backgroundColor:'rgba(44,122,123,0.15)', fill:true, tension:0.3, borderWidth:2, pointRadius:5, pointBackgroundColor:'#2c7a7b' }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:false, suggestedMin:20, title:{display:true,text:'GP 수',color:'#5a6378'}, grid:{color:'#eef2f9'}}, x:{grid:{display:false}}}}
+});
+
+// ============= League Table Data (Top 20) =============
+const leagueData = [
+  { rank:1, prev:1, name:"MBK파트너스", nameEn:"MBK Partners", type:"domestic", amount_eok:300000, amount_display:"약 30조원", amount_detail:"글로벌 통합 (국내 PEF 11.8조)", chief:"김병주 회장" },
+  { rank:2, prev:2, name:"한앤컴퍼니", nameEn:"Hahn & Company", type:"domestic", amount_eok:141280, amount_display:"14조 1,280억원", amount_detail:"국내 PEF 1위(금감원)", chief:"한상원 회장" },
+  { rank:3, prev:4, name:"스틱인베스트먼트", nameEn:"STIC Investments", type:"domestic", amount_eok:102000, amount_display:"약 10조 2,000억원", amount_detail:"PEF·VC·Credit 통합", chief:"도용환 회장/곽동걸 대표" },
+  { rank:4, prev:5, name:"IMM인베스트먼트", nameEn:"IMM Investment", type:"domestic", amount_eok:90000, amount_display:"약 9조원", amount_detail:"25년 누적 펀드", chief:"지성배 회장/장동우 대표" },
+  { rank:5, prev:3, name:"IMM PE", nameEn:"IMM Private Equity", type:"domestic", amount_eok:73178, amount_display:"7조 3,178억원", amount_detail:"5호 로즈골드 결성 중", chief:"손동한 대표" },
+  { rank:6, prev:"NEW", name:"어펄마캐피탈", nameEn:"Affirma Capital", type:"global", amount_eok:52000, amount_display:"약 5조 2,000억원", amount_detail:"한국 6호 5.2억$", chief:"남종수 한국대표" },
+  { rank:7, prev:9, name:"VIG파트너스", nameEn:"VIG Partners", type:"domestic", amount_eok:46000, amount_display:"4조 6,294억원", amount_detail:"5호 1조 1차클로징", chief:"이철민·안성욱 공동대표" },
+  { rank:8, prev:7, name:"한국투자PE", nameEn:"Korea Investment PE", type:"captive", amount_eok:42000, amount_display:"약 4조 2,000억원", amount_detail:"한국투자금융 100%", chief:"김마이클민규 대표" },
+  { rank:9, prev:11, name:"글랜우드PE", nameEn:"Glenwood Private Equity", type:"domestic", amount_eok:37300, amount_display:"약 3조 7,300억원", amount_detail:"3호 1조 결성", chief:"이상호 대표" },
+  { rank:10, prev:6, name:"스카이레이크", nameEn:"Skylake Equity Partners", type:"domestic", amount_eok:35000, amount_display:"약 3조 5,000억원", amount_detail:"12호 1.2조(2023)", chief:"진대제 회장/주형철 사장" },
+  { rank:11, prev:12, name:"JKL파트너스", nameEn:"JKL Partners", type:"domestic", amount_eok:33000, amount_display:"약 3조 3,000억원", amount_detail:"23개 포트폴리오", chief:"정장근 대표" },
+  { rank:12, prev:13, name:"미래에셋자산운용 PE", nameEn:"Mirae Asset GI", type:"captive", amount_eok:31000, amount_display:"약 3조 1,000억원", amount_detail:"PE 부문 누적", chief:"미래에셋 대체투자부문" },
+  { rank:13, prev:10, name:"UCK파트너스", nameEn:"UCK Partners", type:"domestic", amount_eok:30000, amount_display:"약 3조원", amount_detail:"3호 1.1조, IRR 40%", chief:"김수민·곽승웅 공동대표" },
+  { rank:14, prev:"NEW", name:"센트로이드인베스트먼트", nameEn:"Centroid Investment", type:"domestic", amount_eok:30000, amount_display:"약 3조원", amount_detail:"테일러메이드 2.2조", chief:"정진혁 대표" },
+  { rank:15, prev:8, name:"맥쿼리자산운용 PE", nameEn:"Macquarie AM Korea", type:"global", amount_eok:29398, amount_display:"2조 9,398억원", amount_detail:"신규 1조 추진", chief:"송용훈 한국대표" },
+  { rank:16, prev:15, name:"H&Q코리아", nameEn:"H&Q Asia Pacific Korea", type:"domestic", amount_eok:25000, amount_display:"약 2조 5,000억원", amount_detail:"4호 1조 추진", chief:"이종원·임유철 공동대표" },
+  { rank:17, prev:16, name:"NH PE", nameEn:"NH Inv. & Sec. PE", type:"captive", amount_eok:25000, amount_display:"약 2조 5,000억원", amount_detail:"NH투자증권 PE본부", chief:"오광준 본부장" },
+  { rank:18, prev:17, name:"케이스톤파트너스", nameEn:"Keistone Partners", type:"domestic", amount_eok:23000, amount_display:"약 2조 3,000억원", amount_detail:"IRR 평균 33%", chief:"유현갑·박봉섭·조성민 각자대표" },
+  { rank:19, prev:18, name:"SG프라이빗에쿼티", nameEn:"SG Private Equity", type:"domestic", amount_eok:20000, amount_display:"약 2조원", amount_detail:"구조조정 특화", chief:"최창해 대표" },
+  { rank:20, prev:"NEW", name:"크레센도에쿼티파트너스", nameEn:"Crescendo Equity", type:"domestic", amount_eok:18000, amount_display:"약 1조 8,000억원", amount_detail:"Tech 특화, Peter Thiel 후원", chief:"Kevin Gudeuri 대표" }
+];
+const typeMap = { domestic:{cls:"type-domestic", label:"독립계"}, global:{cls:"type-global", label:"글로벌"}, captive:{cls:"type-captive", label:"비독립계"} };
+const maxLeagueAmt = Math.max(...leagueData.map(d=>d.amount_eok));
+document.getElementById('leagueTableBody').innerHTML = leagueData.map(d=>{
+  let rk = d.rank===1?`<span class="rank-medal rank-1">1</span>` : d.rank===2?`<span class="rank-medal rank-2">2</span>` : d.rank===3?`<span class="rank-medal rank-3">3</span>` : d.rank;
+  let ch; if (d.prev==="NEW") ch=`<span class="change-up">NEW ▲</span>`; else { const df=d.prev-d.rank; ch = df>0?`<span class="change-up">▲ ${df}</span>`:df<0?`<span class="change-down">▼ ${Math.abs(df)}</span>`:`<span class="change-same">—</span>`; }
+  const t = typeMap[d.type];
+  const bw = (d.amount_eok/maxLeagueAmt*100).toFixed(1);
+  return `<tr><td class="rank-cell">${rk}</td><td class="name-cell">${d.name}<span class="name-en">${d.nameEn}</span></td><td><span class="type-badge ${t.cls}">${t.label}</span></td><td class="amt-cell">${d.amount_display}<br><span class="amt-detail">${d.amount_eok.toLocaleString()}억원</span></td><td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%"></div></div><div class="amt-detail" style="text-align:left; margin-top:3px;">${d.amount_detail}</div></td><td style="text-align:center;font-size:11px;">${ch}<br><span style="font-size:10px;color:#8089a0;">'24년 ${d.prev==="NEW"?"외":d.prev+"위"}</span></td><td style="font-size:11.5px;">${d.chief}</td></tr>`;
+}).join('');
+
+// ============= Sector Heatmap Data =============
+const sectors = ["소비재·F&B", "제조·소재", "IT·테크", "헬스케어", "금융·서비스", "환경·소재", "엔터·미디어", "운송·물류", "유통·리테일", "인프라·DC"];
+// 강도 0~5 매트릭스: [GP][섹터]
+const heatmapData = [
+  { gp:"MBK파트너스",         row:[2,2,1,3,4,1,0,1,5,1] },
+  { gp:"한앤컴퍼니",            row:[3,5,1,0,1,1,0,2,1,0] },
+  { gp:"스틱인베스트먼트",       row:[2,2,3,1,1,0,4,0,1,0] },
+  { gp:"IMM인베스트먼트",       row:[3,1,4,1,2,0,0,1,2,0] },
+  { gp:"IMM PE",               row:[3,1,1,1,1,3,0,0,3,0] },
+  { gp:"어펄마캐피탈",          row:[3,0,0,0,2,4,0,0,1,0] },
+  { gp:"VIG파트너스",           row:[5,1,0,1,2,0,0,2,1,0] },
+  { gp:"한국투자PE",            row:[1,3,1,1,1,0,1,0,0,0] },
+  { gp:"글랜우드PE",            row:[0,3,0,0,0,5,0,0,0,1] },
+  { gp:"스카이레이크",          row:[1,2,5,1,0,1,0,0,0,0] },
+  { gp:"JKL파트너스",           row:[3,0,0,0,4,0,0,3,1,0] },
+  { gp:"미래에셋PE",            row:[1,1,1,3,1,0,0,2,0,1] },
+  { gp:"UCK파트너스",           row:[3,1,1,4,0,0,1,0,2,0] },
+  { gp:"센트로이드",            row:[3,1,0,0,0,0,0,0,2,0] },
+  { gp:"맥쿼리PE",              row:[0,2,1,0,1,0,0,1,1,5] },
+  { gp:"H&Q코리아",             row:[1,2,3,2,1,0,0,0,1,0] },
+  { gp:"NH PE",                row:[1,1,1,0,1,0,1,0,1,0] },
+  { gp:"케이스톤파트너스",       row:[2,3,3,0,0,0,0,0,0,0] },
+  { gp:"SG프라이빗에쿼티",       row:[0,4,0,0,1,1,0,0,1,0] },
+  { gp:"크레센도",              row:[0,2,5,1,0,1,0,0,0,0] }
+];
+const hmRoot = document.getElementById('heatmap');
+let hmHTML = `<div class="hm-header"><div>운용사 / 섹터</div>${sectors.map(s=>`<div>${s}</div>`).join('')}</div>`;
+heatmapData.forEach(r => {
+  hmHTML += `<div class="hm-row"><div class="hm-name">${r.gp}</div>${r.row.map(v=>`<div class="hm-cell h${v}">${v===0?'·':'★'.repeat(Math.min(v,5))}</div>`).join('')}</div>`;
+});
+hmRoot.innerHTML = hmHTML;
+
+// ============= Strategy/Cross-border Profile =============
+const strategyData = [
+  { gp:"MBK파트너스", strategy:["Mega Buyout","Cross-border","Mega Cap"], dealSize:"메가 (5,000억 이상)", xb:"High", sectors:"금융·리테일·헬스케어" },
+  { gp:"한앤컴퍼니", strategy:["Mega Buyout","Industrial"], dealSize:"메가 (3,000~5조)", xb:"Medium", sectors:"제조·소재·소비재" },
+  { gp:"스틱인베스트먼트", strategy:["Growth","Cross-border","Credit"], dealSize:"미드 (500~3,000억)", xb:"High", sectors:"엔터·IT·소비재" },
+  { gp:"IMM인베스트먼트", strategy:["Growth","Venture·PE","Cross-border"], dealSize:"미드~그로스", xb:"Medium", sectors:"IT·플랫폼·헬스케어" },
+  { gp:"IMM PE", strategy:["Mega Buyout","Co-invest"], dealSize:"메가 (1조 이상)", xb:"Low", sectors:"소비재·환경·산업가스" },
+  { gp:"어펄마캐피탈", strategy:["Mid-cap Buyout","Cross-border"], dealSize:"미드 (500~3,000억)", xb:"High", sectors:"환경·소비재·서비스" },
+  { gp:"VIG파트너스", strategy:["Mid-cap Buyout","Consumer"], dealSize:"미드 (1,000~3,000억)", xb:"Low", sectors:"소비재·서비스·F&B" },
+  { gp:"한국투자PE", strategy:["Mid-cap Buyout","Co-invest"], dealSize:"미드", xb:"Low", sectors:"제조·반도체·엔터" },
+  { gp:"글랜우드PE", strategy:["Mid-cap Buyout","Carve-out","Cross-border"], dealSize:"미드~메가 (2,000~1.5조)", xb:"Medium", sectors:"환경·소재·산업" },
+  { gp:"스카이레이크", strategy:["Mid-cap Buyout","Tech"], dealSize:"미드 (500~7,000억)", xb:"Low", sectors:"IT·디스플레이·반도체" },
+  { gp:"JKL파트너스", strategy:["Mid-cap Buyout","Distressed"], dealSize:"미드 (1,000~7,000억)", xb:"Low", sectors:"금융·운송·서비스" },
+  { gp:"미래에셋PE", strategy:["Growth","Cross-border"], dealSize:"미드", xb:"High", sectors:"헬스케어·플랫폼·운송" },
+  { gp:"UCK파트너스", strategy:["Mid-cap Buyout","Consumer·Healthcare"], dealSize:"미드 (700~7,500억)", xb:"Medium", sectors:"헬스케어·F&B·소비재" },
+  { gp:"센트로이드", strategy:["Mega Buyout","Cross-border"], dealSize:"메가 (단일 2.2조)", xb:"High", sectors:"소비재·글로벌브랜드" },
+  { gp:"맥쿼리PE", strategy:["Infra","Mid-cap Buyout"], dealSize:"미드~메가", xb:"High", sectors:"인프라·DC·IT서비스" },
+  { gp:"H&Q코리아", strategy:["Mid-cap Buyout","Growth"], dealSize:"미드 (500~3,000억)", xb:"Medium", sectors:"IT·헬스케어·소비재" },
+  { gp:"NH PE", strategy:["Mezzanine","Growth"], dealSize:"미드~그로스", xb:"Low", sectors:"광고·소비재·서비스" },
+  { gp:"케이스톤파트너스", strategy:["Mid-cap Buyout","Growth"], dealSize:"미드 (500~2,000억)", xb:"Low", sectors:"제조·IT·F&B" },
+  { gp:"SG프라이빗에쿼티", strategy:["Distressed","Special Sit"], dealSize:"미드 (500~2,000억)", xb:"Low", sectors:"제조·소재·구조조정" },
+  { gp:"크레센도", strategy:["Growth","Tech"], dealSize:"미드 (500~2,000억)", xb:"Medium", sectors:"반도체·IT·테크" },
+  { gp:"도미누스", strategy:["Mezzanine","Growth"], dealSize:"그로스 (100~500억)", xb:"Low", sectors:"IT·2차전지·반도체" },
+  { gp:"큐캐피탈", strategy:["Mid-cap Buyout","Growth"], dealSize:"미드 (500~4,000억)", xb:"Low", sectors:"건설·F&B·IT" },
+  { gp:"베인캐피탈 코리아", strategy:["Mega Buyout","Cross-border"], dealSize:"메가 (5,000억 이상)", xb:"High", sectors:"헬스케어·뷰티" },
+  { gp:"칼라일그룹", strategy:["Mega Buyout","Cross-border"], dealSize:"메가 (5,000억 이상)", xb:"High", sectors:"운송·F&B·금융" },
+  { gp:"액티스", strategy:["Infra","DC","Cross-border"], dealSize:"미드~메가", xb:"High", sectors:"DC·신재생·인프라" }
+];
+const strategyBadgeMap = {
+  "Mega Buyout":"strat-mega", "Mid-cap Buyout":"strat-mid", "Growth":"strat-growth",
+  "Mezzanine":"strat-mezz", "Distressed":"strat-distress", "Special Sit":"strat-distress",
+  "Cross-border":"strat-xb", "Co-invest":"strat-xb", "Carve-out":"strat-mid",
+  "Tech":"strat-growth", "Consumer":"strat-growth", "Industrial":"strat-mid", "Credit":"strat-mezz",
+  "Venture·PE":"strat-growth", "Consumer·Healthcare":"strat-growth", "Infra":"strat-infra", "DC":"strat-infra",
+  "Mega Cap":"strat-mega"
+};
+const xbColor = { High:"#c0392b", Medium:"#b7791f", Low:"#5a6378" };
+document.getElementById('strategyTableBody').innerHTML = strategyData.map(s => {
+  const badges = s.strategy.map(b => `<span class="strat-badge ${strategyBadgeMap[b]||'strat-mid'}">${b}</span>`).join('');
+  return `<tr><td style="font-weight:600;color:#1a2744;">${s.gp}</td><td><div class="strat-badges">${badges}</div></td><td>${s.dealSize}</td><td style="color:${xbColor[s.xb]};font-weight:600;">${s.xb}</td><td style="font-size:11.5px;color:#5a6378;">${s.sectors}</td></tr>`;
+}).join('');
+
+// Strategy distribution chart
+const stratCounts = {};
+strategyData.forEach(s => s.strategy.forEach(st => stratCounts[st]=(stratCounts[st]||0)+1));
+const sortedStrat = Object.entries(stratCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+new Chart(document.getElementById('strategyChart'), {
+  type:'bar',
+  data:{labels:sortedStrat.map(s=>s[0]), datasets:[{label:'GP 수', data:sortedStrat.map(s=>s[1]), backgroundColor:'#2c7a7b', borderRadius:3}]},
+  options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,grid:{color:'#eef2f9'}}, y:{grid:{display:false}}}}
+});
+
+// Sector exposure chart
+const sectorCounts = sectors.map((_, i) => heatmapData.filter(r => r.row[i] >= 2).length);
+new Chart(document.getElementById('sectorChart'), {
+  type:'bar',
+  data:{labels:sectors, datasets:[{label:'활발한 GP 수(★★ 이상)', data:sectorCounts, backgroundColor:'#1a2744', borderRadius:3}]},
+  options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,grid:{color:'#eef2f9'}}, y:{grid:{display:false}, ticks:{font:{size:10}}}}}
+});
+
+// ============= Fundraising Tracker =============
+const fundraiseData = [
+  { gp:"IMM PE", fund:"로즈골드 5호", target_eok:26000, target_display:"2조 6,000억원", progress:30, anchor:"국민연금·교직원공제회 등 출자검토", status:"open", strategy:"Mega Buyout" },
+  { gp:"VIG파트너스", fund:"5호 블라인드", target_eok:10000, target_display:"1조원", progress:60, anchor:"1차 클로징 완료", status:"clos1", strategy:"Mid-cap Buyout (소비재)" },
+  { gp:"글랜우드PE", fund:"3호 블라인드", target_eok:10000, target_display:"약 1조원", progress:50, anchor:"중동 SWF·국내 LP 다수", status:"open", strategy:"Carve-out 특화" },
+  { gp:"H&Q코리아", fund:"4호 블라인드", target_eok:10000, target_display:"1조원대", progress:25, anchor:"2024 하반기 본격 모집", status:"open", strategy:"Mid-cap Buyout" },
+  { gp:"코스톤아시아", fund:"3호 블라인드", target_eok:5000, target_display:"5,000억원", progress:35, anchor:"중견기업 그로스", status:"open", strategy:"Growth Capital" },
+  { gp:"맥쿼리PE", fund:"신규 블라인드", target_eok:10000, target_display:"1조원 추진", progress:15, anchor:"인프라·미드캡 듀얼", status:"target", strategy:"Infra + Mid-cap" },
+  { gp:"E&F PE", fund:"3호 블라인드", target_eok:5000, target_display:"약 5,000억원", progress:30, anchor:"환경·소재 특화", status:"open", strategy:"Sector PE" },
+  { gp:"어펄마캐피탈", fund:"한국 6호", target_eok:6800, target_display:"5.2억$ (≈6,800억)", progress:70, anchor:"1차 클로징 3.7억$", status:"clos1", strategy:"Cross-border Mid-cap" },
+  { gp:"스카이레이크", fund:"13호 (검토)", target_eok:10000, target_display:"1조원대 검토", progress:10, anchor:"Tech·반도체 후속", status:"target", strategy:"Tech 특화" },
+  { gp:"센트로이드", fund:"신규 펀드", target_eok:5000, target_display:"미정", progress:5, anchor:"2025 출자사업 진행 이슈", status:"target", strategy:"Mega Buyout" }
+];
+const frStatusMap = { open:{cls:"open",label:"모집중"}, clos1:{cls:"clos1",label:"1차 클로징"}, target:{cls:"target",label:"준비/검토"} };
+document.getElementById('fundraiseTableBody').innerHTML = fundraiseData.map(f => {
+  const st = frStatusMap[f.status];
+  return `<tr><td style="font-weight:600;color:#1a2744;">${f.gp}</td><td>${f.fund}<br><span style="font-size:10.5px;color:#5a6378;">${f.strategy}</span></td><td class="amt-cell">${f.target_display}</td><td style="text-align:right;font-weight:600;color:#2c7a7b;">${f.progress}%<div class="fr-prog-wrap" style="width:80px;margin-left:auto;"><div class="fr-prog-fill" style="width:${f.progress}%"></div></div></td><td style="font-size:11.5px;">${f.anchor}</td><td><span class="fr-status ${st.cls}">${st.label}</span></td></tr>`;
+}).join('');
+
+// ============= Hall of Fame =============
+const hofData = [
+  { deal:"HPSP", gp:"크레센도에쿼티", moic:"200x", iconic:"반도체 장비", note:"2017년 풍산 인수 → 2024년 매각, 시총 2.8조원까지 성장. 한국 PE 사상 최고 멀티플 사례." },
+  { deal:"잡코리아", gp:"H&Q코리아", moic:"8.6x", iconic:"채용 플랫폼", note:"2013년 950억 인수 → 2021년 9,700억 매각. 어펄마·H&Q 공동." },
+  { deal:"메디트", gp:"UCK파트너스", moic:"6.5x", iconic:"구강스캐너", note:"2019년 인수 → 2022년 MBK에 2.4조원 매각. IRR 약 80%." },
+  { deal:"하이브(빅히트)", gp:"스틱인베스트먼트", moic:"9.2x", iconic:"엔터테인먼트", note:"2018년 1,039억 → IPO 후 9,611억 회수." },
+  { deal:"카버코리아", gp:"베인캐피탈", moic:"~10x", iconic:"AHC 화장품", note:"2016년 인수 → 2017년 유니레버에 3.05조원 매각. 단기 초고수익." },
+  { deal:"공차코리아", gp:"UCK파트너스", moic:"4.9x", iconic:"F&B 프랜차이즈", note:"2014년 710억 → 2019년 3,500억 회수." },
+  { deal:"클래시스", gp:"베인캐피탈", moic:"~20x", iconic:"의료기기", note:"2022년 6,700억 인수 → 멀티플 20배 수준 거론." },
+  { deal:"휴젤", gp:"베인캐피탈", moic:"~1.9x", iconic:"보툴리눔톡신", note:"2017년 9,274억 → 2021년 GS컨소시엄 1.72조 매각." },
+  { deal:"ADT캡스", gp:"칼라일·맥쿼리", moic:"~1.4x", iconic:"보안서비스", note:"2014년 2.06조 → 2018년 SKT 2.97조 매각, 차익 9,349억." },
+  { deal:"한온시스템", gp:"한앤컴퍼니", moic:"N/A", iconic:"자동차 부품", note:"2015년 3.9조 인수 → 2024년 한국타이어에 매각, 1.2조원 회수." },
+  { deal:"한국유리(한글라스)", gp:"글랜우드PE", moic:"2.3x", iconic:"건축 유리", note:"2020년 3,000억 → 2023년 매각." },
+  { deal:"EMC홀딩스", gp:"어펄마캐피탈", moic:"~3x", iconic:"환경(매립·소각)", note:"2017년 인수 → 2020년 SK에코플랜트 1.5조원 매각." },
+  { deal:"두산솔루스(솔루스첨단소재)", gp:"스카이레이크", moic:"~2.5x", iconic:"동박·전지 소재", note:"2020년 6,986억 인수." },
+  { deal:"야놀자", gp:"스카이레이크", moic:"~9x", iconic:"여가 플랫폼", note:"2017년 600억 → 소프트뱅크 후속투자로 9배 회수." },
+  { deal:"W컨셉", gp:"IMM PE", moic:"2.3x", iconic:"패션 커머스", note:"2017년 612억 → 2021년 SSG닷컴 2,700억 매각." },
+  { deal:"티웨이항공", gp:"JKL파트너스", moic:"~2x", iconic:"LCC", note:"2018년 → 2024년 대명소노 매각, IRR 23%." },
+  { deal:"푸디스트", gp:"VIG파트너스", moic:"~2x", iconic:"식자재 유통", note:"2019년 → 2024년 사조그룹 2,500억 매각." },
+  { deal:"LG CNS", gp:"맥쿼리PE", moic:"진행중", iconic:"IT 서비스", note:"2020년 35% 1조원 인수 → 2025년 IPO 6,000억원 회수." },
+  { deal:"투썸플레이스", gp:"칼라일그룹", moic:"진행중", iconic:"커피 프랜차이즈", note:"2021년 약 1조원 인수, 매각 검토." },
+  { deal:"오스템임플란트", gp:"MBK·UCK", moic:"진행중", iconic:"임플란트", note:"2023년 2.5조원 컨소시엄 인수, 가치제고 중." }
+];
+document.getElementById('hofGrid').innerHTML = hofData.map(h => `
+  <div class="hof-card">
+    <div class="hof-title">${h.deal}</div>
+    <div class="hof-gp">${h.gp} · ${h.iconic}</div>
+    <div class="hof-metric"><div class="hof-moic">${h.moic}</div><div class="hof-label">MOIC<br>(보도 기준)</div></div>
+    <div class="hof-note">${h.note}</div>
+  </div>
+`).join('');
+
+// ============= Risk Tracker =============
+const riskData = [
+  { gp:"MBK파트너스", flag:"red", title:"홈플러스 기업회생 신청 (2025)", body:"2015년 7.2조원에 인수한 홈플러스가 2025년 기업회생절차 개시. PE 단일 딜 사상 최대 손실 우려. LP 출자금 영향 모니터링 필요. 또한 <strong>고려아연 경영권 분쟁(2024~)</strong>으로 영풍과 공개매수 진행 중, 결과에 따라 추가 리스크." },
+  { gp:"KDB인베스트먼트", flag:"yellow", title:"신규 PEF 미운용, 사실상 청산 단계", body:"산업은행 100% 자회사로 2019년 설립. 대우건설(2022년 중흥건설 2.07조 매각) 이후 신규 PEF 결성 없음. 인베스트조선 등에서 존속 의문 제기. 향후 사업 방향성 확인 필요." },
+  { gp:"키스톤프라이빗에쿼티", flag:"yellow", title:"라임사태 연루 보도 평판 리스크", body:"과거 라임자산운용 관련 일부 펀드 연관 보도. 현재는 자체 PMI 전략으로 운영 중이나 출자 시 평판 리스크 점검 필요. 무궁화신탁·대동모빌리티 등 2024년 매각으로 회수 진행." },
+  { gp:"ST리더스PE", flag:"red", title:"부정사건 관련 보도 후 시장 축소", body:"내부 부정사건 관련 보도 이후 신규 운용 사실상 위축. 운용역량 평가 시 별도 확인 필요." },
+  { gp:"센트로이드인베스트먼트", flag:"yellow", title:"2025년 출자사업 연이은 탈락 보도", body:"테일러메이드(2.2조) 단일 딜로 급성장했으나 2025년 신규 출자사업에서 연이어 탈락. 후속 펀드 결성 동력 약화 우려. 매각 추진 중인 테일러메이드(거론가 5조원) 결과가 향후 평가 분기점." },
+  { gp:"한앤컴퍼니", flag:"info", title:"남양유업 인수 분쟁 (해소)", body:"2021년 3,107억원 인수 합의 후 매도인 측 일방 해제 통보로 분쟁 → 2024년 대법원 판결로 인수 최종 완료. 분쟁은 종결되었으나 PMI 지연 영향 점검 권장." },
+  { gp:"VIG파트너스", flag:"info", title:"보고펀드에서 VIG로 분리 (2014, 완료)", body:"前 보고펀드에서 2014년 VIG파트너스·보고펀드자산운용으로 분리. 인적 분쟁 후 정리 완료. 현재는 별개 GP로 정상 운영. 과거 일부 LP 출자금 처리 확인 필요." },
+  { gp:"한화자산운용 PE/VC", flag:"info", title:"PE/VC 분할법인 설립 추진→철회 (2024)", body:"2024년 PE/VC 부문 분할법인 추진했으나 철회. 김종호 신임 대표 체제 하 통합 운영 유지. 조직 안정성 회복 추이 모니터링." },
+  { gp:"IMM PE", flag:"info", title:"손동한 단독대표 체제 전환 (2024)", body:"송인준 前 대표 IMM홀딩스 부회장 이동, 손동한 단독대표 체제. 핵심인력 안정성 양호하나 Key Person Clause 점검 필요." },
+  { gp:"스카이레이크", flag:"info", title:"진대제 회장 → 주형철·김봉식 세대교체 (2019)", body:"창업자 진대제 회장 일선 후퇴, 주형철 사장·김봉식 부회장 중심 운영. 핵심인력 변동 후 트랙레코드 (12호 펀드) 유지 중." }
+];
+const flagMap = { red:"flag-red", yellow:"flag-yellow", info:"flag-info" };
+const flagLabel = { red:"🔴 RED Flag", yellow:"🟡 YELLOW Flag", info:"🔵 INFO (해소/이력)" };
+document.getElementById('riskList').innerHTML = riskData.map(r => `
+  <div class="risk-card ${r.flag}">
+    <div class="risk-head">
+      <div class="risk-gp">${r.gp} <span style="font-size:11px;color:#5a6378;font-weight:400;margin-left:6px;">— ${r.title}</span></div>
+      <span class="risk-flag ${flagMap[r.flag]}">${flagLabel[r.flag]}</span>
+    </div>
+    <div class="risk-body">${r.body}</div>
+  </div>
+`).join('');
+
+// ============= Detail Cards Data =============
+const peData = [
+  { rank:1, name:"MBK파트너스", nameEn:"MBK Partners", aum:30.0, aumDisplay:"약 30조원", aumNote:"글로벌 6호 펀드 약 8조원 포함 통합 AUM. 국내 PEF 공시 약 11.8조원", founder:"김병주 (Michael ByungJu Kim)", ceo:"김병주 회장(Chairman)", keyPeople:["부재훈 부회장","윤종하 부회장","김광일 부회장"], deals:[{name:"홈플러스",year:"2015",note:"7.2조원 인수 (2025년 회생절차)"},{name:"오스템임플란트",year:"2023",note:"UCK 컨소시엄 2.5조원"},{name:"롯데카드",year:"2019",note:"1.3조원, 매각 추진"},{name:"고려아연",year:"2024",note:"영풍 공동, 경영권 분쟁"},{name:"ING생명",year:"2013",note:"16억$ → 2018 신한금융 매각"}], tier:"tier1" },
+  { rank:2, name:"한앤컴퍼니", nameEn:"Hahn & Company", aum:14.13, aumDisplay:"14.1조원", aumNote:"2024년말 PEF 약정총액 14.1조 (금감원 기준 2년 연속 1위)", founder:"한상원", ceo:"한상원 회장", keyPeople:["윤여을 회장","스콧 박 매니징디렉터","이종원 부사장"], deals:[{name:"한온시스템",year:"2015",note:"3.9조 인수, 2024 한국타이어 매각"},{name:"쌍용C&E",year:"2016",note:"시멘트 1.4조 인수"},{name:"SK스페셜티",year:"2025",note:"특수가스 2.6조 인수"},{name:"남양유업",year:"2021",note:"3,107억 인수(2024 인수 완료)"},{name:"한국공항",year:"2020",note:"9,906억 인수"}], tier:"tier1" },
+  { rank:3, name:"스틱인베스트먼트", nameEn:"STIC Investments", aum:10.2, aumDisplay:"10.2조원", aumNote:"PEF+VC+크레딧 통합. PEF 단독 약 6.5조원", founder:"도용환", ceo:"곽동걸 대표이사", keyPeople:["도용환 회장(설립자)","남강욱 부사장","임정강 부사장"], deals:[{name:"하이브(빅히트)",year:"2018",note:"9.2배 회수"},{name:"두산공작기계",year:"2016",note:"공동투자"},{name:"야놀자",year:"2019",note:"성장형 투자"},{name:"롯데정밀화학",year:"2016",note:"특수화학"},{name:"메가스터디교육",year:"회수",note:"교육 플랫폼"}], tier:"tier1" },
+  { rank:4, name:"IMM인베스트먼트", nameEn:"IMM Investment", aum:9.0, aumDisplay:"약 9조원", aumNote:"25년 누적 펀드 약 9조원", founder:"지성배 (IMM그룹 창업자)", ceo:"장동우·지성배·정일부 공동대표", keyPeople:["장동우 대표","지성배 회장","정일부 대표"], deals:[{name:"야놀자",year:"2016~",note:"소프트뱅크 후속"},{name:"무신사",year:"2019",note:"시리즈A"},{name:"쏘카",year:"2015~",note:"초기 투자자"},{name:"케이뱅크",year:"2021",note:"프리IPO"},{name:"셀트리온",year:"2002~",note:"초기 투자"}], tier:"tier1" },
+  { rank:5, name:"IMM PE", nameEn:"IMM Private Equity", aum:7.4, aumDisplay:"7.4조원", aumNote:"2024년 약정총액 약 7.4조원. 5호 로즈골드 결성 진행", founder:"지성배 (IMM홀딩스 회장)", ceo:"손동한 대표이사 사장", keyPeople:["송인준 IMM홀딩스 부회장","지성배 회장","이해준 부사장"], deals:[{name:"한샘",year:"2021",note:"1.4조원 인수"},{name:"에어퍼스트",year:"2019",note:"산업가스"},{name:"에코비트",year:"2024",note:"환경 2조원"},{name:"W컨셉",year:"2017",note:"2.3배 매각"},{name:"할리스커피",year:"2013",note:"1.8배 매각"}], tier:"tier1" },
+  { rank:6, name:"어펄마캐피탈", nameEn:"Affirma Capital", aum:5.2, aumDisplay:"약 5.2조원", aumNote:"글로벌 35억$+. 2019 SC PE 분사", founder:"Standard Chartered PE (2019 분사)", ceo:"남종수 한국 대표", keyPeople:["남종수 한국 대표","권시몽 디렉터","이종원 디렉터"], deals:[{name:"EMC홀딩스",year:"2017",note:"3배+ 회수"},{name:"AJ렌터카",year:"투자",note:"매각 회수"},{name:"MFG코리아",year:"2017",note:"외식"},{name:"코엔텍 인수전",year:"2025",note:"폐기물 4,000억"},{name:"스무디킹",year:"투자",note:"F&B"}], tier:"tier1" },
+  { rank:7, name:"VIG파트너스", nameEn:"VIG Partners", aum:4.6, aumDisplay:"4.6조원", aumNote:"2024년말 누적 운용 4.6조, 29개사 투자", founder:"舊 보고펀드, 2014 사명변경", ceo:"이철민·안성욱 공동대표", keyPeople:["이철민 대표","안성욱 대표","신재하 시니어파트너","박병무 고문"], deals:[{name:"프리드라이프",year:"2020",note:"상조 1위"},{name:"푸디스트",year:"2019",note:"2배 매각"},{name:"바디프랜드",year:"2015",note:"매각 회수"},{name:"이스타항공",year:"2022",note:"2024 매각"},{name:"삼양옵틱스",year:"보유",note:"광학기기"}], tier:"tier1" },
+  { rank:8, name:"한국투자PE", nameEn:"Korea Investment PE", aum:4.2, aumDisplay:"4.2조원", aumNote:"약 20개 펀드, 한국투자금융 100% 자회사", founder:"한국투자금융지주 (2010 설립)", ceo:"김마이클민규 대표이사", keyPeople:["김마이클민규 대표","이덕훈 부사장","이상록 전무"], deals:[{name:"SK실트론",year:"2017",note:"한앤 컨소시엄"},{name:"두산공작기계",year:"2016",note:"MBK 컨소시엄"},{name:"JYP엔터",year:"투자",note:"메자닌"},{name:"비올",year:"2019",note:"IPO 회수"},{name:"마니커F&G",year:"2020",note:"성장형"}], tier:"tier1" },
+  { rank:9, name:"글랜우드PE", nameEn:"Glenwood Private Equity", aum:3.73, aumDisplay:"3.73조원", aumNote:"10년 누적 투자 27억$, 3호 1조 결성", founder:"이상호", ceo:"이상호 대표이사", keyPeople:["이상호 대표","김창규 부사장","박종현 부사장"], deals:[{name:"LG화학 워터솔루션",year:"2025",note:"무바달라 1.4조"},{name:"한국유리(한글라스)",year:"2020",note:"2.3배 매각"},{name:"SGC그린파워",year:"2024",note:"3,222억"},{name:"테크로스환경",year:"2024",note:"약 2,600억"},{name:"PI첨단소재",year:"2020",note:"매각"}], tier:"tier1" },
+  { rank:10, name:"스카이레이크", nameEn:"Skylake Equity Partners", aum:3.5, aumDisplay:"3.5조원", aumNote:"12호 1.2조(2023). IT·테크 특화", founder:"진대제 (전 정보통신부 장관)", ceo:"주형철 사장·김봉식 부회장", keyPeople:["진대제 회장","주형철 대표","김봉식 부회장","민장근 부사장"], deals:[{name:"두산솔루스",year:"2020",note:"6,986억"},{name:"야놀자",year:"2017",note:"9배 회수"},{name:"비즈니스온",year:"2024",note:"B2B SaaS"},{name:"넥스플렉스",year:"2019",note:"소재"},{name:"디비하이텍",year:"투자",note:"메자닌"}], tier:"tier1" },
+  { rank:11, name:"JKL파트너스", nameEn:"JKL Partners", aum:3.3, aumDisplay:"3.3조원", aumNote:"누적 3.3조, 23개 포트폴리오", founder:"정장근·강민균·이은상 (2001)", ceo:"정장근 대표이사", keyPeople:["정장근 대표","강민균 부사장","이은상 부사장"], deals:[{name:"롯데손해보험",year:"2019",note:"7,300억"},{name:"티웨이항공",year:"2018",note:"2배 매각"},{name:"크린토피아",year:"2018",note:"세탁"},{name:"런던베이글뮤지엄",year:"2024",note:"베이커리"},{name:"페렌벨",year:"투자",note:""}], tier:"tier2" },
+  { rank:12, name:"미래에셋자산운용 PE", nameEn:"Mirae Asset GI", aum:3.1, aumDisplay:"약 3.1조원", aumNote:"PEF 부문 누적 운용 3.1조", founder:"미래에셋그룹 PE본부", ceo:"미래에셋 대체투자부문", keyPeople:["PE부문 본부장"], deals:[{name:"CJ헬스케어",year:"투자",note:""},{name:"차헬스케어",year:"투자",note:""},{name:"서울공항리무진",year:"투자",note:""},{name:"임파서블푸드",year:"투자",note:"美 대체육"},{name:"룽뎬전기",year:"투자",note:"中 전기차"}], tier:"tier2" },
+  { rank:13, name:"UCK파트너스", nameEn:"UCK Partners", aum:3.0, aumDisplay:"3.0조원", aumNote:"3호 1.1조(2023), 누적 IRR 40%", founder:"김수민 (베인앤컴퍼니 출신)", ceo:"김수민·곽승웅 공동대표", keyPeople:["김수민 대표","곽승웅 대표","신선화 파트너"], deals:[{name:"메디트",year:"2019",note:"6.5배 매각"},{name:"오스템임플란트",year:"2023",note:"MBK 컨소"},{name:"공차코리아",year:"2014",note:"4.9배"},{name:"쿠캣",year:"2019",note:""},{name:"락앤락",year:"2017",note:"매각"}], tier:"tier2" },
+  { rank:14, name:"센트로이드", nameEn:"Centroid Investment", aum:3.0, aumDisplay:"약 3.0조원", aumNote:"테일러메이드 2.2조 포함", founder:"정진혁 (1984년생)", ceo:"정진혁 대표", keyPeople:["정진혁 대표"], deals:[{name:"테일러메이드",year:"2021",note:"2.2조 인수"},{name:"솔리드이엔지",year:"2017",note:""},{name:"코오롱화이버",year:"2019",note:"소재"},{name:"웅진북센",year:"2020",note:"재매각"}], tier:"tier2" },
+  { rank:15, name:"맥쿼리PE", nameEn:"Macquarie AM Korea", aum:2.94, aumDisplay:"2.94조원", aumNote:"MKIF 별도. 신규 1조 추진", founder:"맥쿼리그룹 (호주)", ceo:"송용훈 한국대표", keyPeople:["송용훈 대표","이종철 인프라"], deals:[{name:"LG CNS",year:"2020",note:"1조 인수, 25년 IPO 회수"},{name:"ADT캡스",year:"2014",note:"2018 SKT 매각"},{name:"MKIF",year:"2002",note:"인프라"},{name:"두산공작기계",year:"2019",note:""},{name:"LNG 인프라",year:"투자",note:""}], tier:"tier2" },
+  { rank:16, name:"H&Q코리아", nameEn:"H&Q Asia Pacific Korea", aum:2.5, aumDisplay:"2.5조원", aumNote:"4호 1조 추진(2024)", founder:"1998 서울사무소→2005 분사", ceo:"이종원·임유철 공동대표", keyPeople:["이종원 대표/CIO","임유철 대표","이정진 대표"], deals:[{name:"잡코리아",year:"2013",note:"8.6배 매각"},{name:"현대엘리베이터",year:"투자",note:"3,100억"},{name:"일동제약",year:"2015",note:"2019 매각"},{name:"메가존클라우드",year:"투자",note:""},{name:"렌딧",year:"2021",note:"504억"}], tier:"tier2" },
+  { rank:17, name:"NH PE", nameEn:"NH Inv. & Sec. PE", aum:2.5, aumDisplay:"약 2.5조원", aumNote:"NH투자증권 PE본부", founder:"2016 통합", ceo:"오광준 본부장", keyPeople:["오광준 본부장"], deals:[{name:"메조미디어",year:"투자",note:"광고"},{name:"더블트리",year:"투자",note:""},{name:"트루컬러",year:"투자",note:""},{name:"에이마케팅",year:"투자",note:""},{name:"중견기업 메자닌",year:"다수",note:""}], tier:"tier2" },
+  { rank:18, name:"케이스톤파트너스", nameEn:"Keistone Partners", aum:2.3, aumDisplay:"2.3조원", aumNote:"5년 1조 투자, IRR 33%", founder:"유현갑·박봉섭·조성민 (2006)", ceo:"유현갑·박봉섭·조성민 각자대표", keyPeople:["유현갑 대표","박봉섭 대표","조성민 대표"], deals:[{name:"LS머트리얼즈",year:"2019",note:"IPO 회수"},{name:"세아메카닉스",year:"2024",note:"코스닥 상장"},{name:"세나테크놀로지",year:"투자",note:""},{name:"역전할머니맥주",year:"투자",note:""},{name:"퓨리오사AI",year:"투자",note:"AI 반도체"}], tier:"tier2" },
+  { rank:19, name:"SG프라이빗에쿼티", nameEn:"SG Private Equity", aum:2.0, aumDisplay:"약 2.0조원", aumNote:"2012 설립, 구조조정 특화", founder:"최창해", ceo:"최창해 단독대표", keyPeople:["최창해 대표","임현성 파트너","김양우 파트너"], deals:[{name:"캐프",year:"2017",note:"매각"},{name:"동아출판",year:"투자",note:""},{name:"한라엠앤씨",year:"투자",note:"부품"},{name:"SGCH",year:"투자",note:"특수가스"},{name:"에이엠시스템",year:"투자",note:"메자닌"}], tier:"tier2" },
+  { rank:20, name:"크레센도에쿼티파트너스", nameEn:"Crescendo Equity Partners", aum:1.8, aumDisplay:"약 1.8조원", aumNote:"Peter Thiel 후원, Tech 특화", founder:"Kevin Gudeuri", ceo:"Kevin Gudeuri 대표", keyPeople:["Kevin Gudeuri 대표"], deals:[{name:"HPSP",year:"2017",note:"200배 멀티플"},{name:"사이버다임",year:"2024",note:"1,000억"},{name:"서진시스템",year:"1호",note:""},{name:"큐익스프레스",year:"2호",note:""},{name:"엔씨켐",year:"2호",note:""}], tier:"tier2" },
+  { rank:21, name:"도미누스인베스트먼트", nameEn:"Dominus Investment", aum:1.8, aumDisplay:"약 1.8조원", aumNote:"누적 2.8조, KIC 위탁운용 내정", founder:"정도현 (2011)", ceo:"정도현 대표", keyPeople:["정도현 대표"], deals:[{name:"IT·2차전지·반도체 50개+",year:"지속",note:""},{name:"메자닌 중심",year:"지속",note:""}], tier:"tier2" },
+  { rank:22, name:"큐캐피탈파트너스", nameEn:"Q Capital Partners", aum:1.5, aumDisplay:"약 1.5조원", aumNote:"코스닥 상장사", founder:"1982 설립", ceo:"황희연 대표이사", keyPeople:["황희연 대표","유정상 부사장","정형진 전무"], deals:[{name:"두산건설",year:"2021",note:"4,000억"},{name:"노랑통닭",year:"2020",note:"700억"},{name:"BBQ",year:"2019",note:"600억"},{name:"동부익스프레스",year:"2014",note:"4,162억 매각"},{name:"한컴",year:"2010",note:"IRR 33%"}], tier:"tier2" },
+  { rank:23, name:"다올PE", nameEn:"Daol Private Equity", aum:1.5, aumDisplay:"약 1.5조원", aumNote:"9개 PEF, KTB→다올", founder:"2012 KTB PE 분리", ceo:"다올PE 대표", keyPeople:["운용본부"], deals:[{name:"SK실트론",year:"투자",note:""},{name:"SKM",year:"Buyout",note:""},{name:"팬텍&큐리텔",year:"Buyout",note:""},{name:"동부익스프레스",year:"2014",note:""},{name:"기타 다수",year:"지속",note:""}], tier:"tier3" },
+  { rank:24, name:"KDB인베스트먼트", nameEn:"KDB Investment", aum:1.36, aumDisplay:"1.36조원", aumNote:"산업은행 100% 자회사", founder:"산업은행 (2019)", ceo:"최대현 대표이사", keyPeople:["최대현 대표","김성주 부사장"], deals:[{name:"대우건설",year:"2019/2022",note:"1.36조 → 2.07조 매각"}], tier:"tier3" },
+  { rank:25, name:"아주IB투자 PE", nameEn:"Aju IB Investment PE", aum:1.25, aumDisplay:"약 1.25조원", aumNote:"PE 5개 펀드 합산", founder:"아주그룹 (1974)", ceo:"김지원 대표", keyPeople:["김지원 대표"], deals:[{name:"스페이스X",year:"투자",note:"2026 회수"},{name:"PE 4호 신규",year:"2024",note:""},{name:"IPO 회수 7개사",year:"2024",note:"685억"},{name:"December Nox",year:"투자",note:"2,475억"}], tier:"tier3" },
+  { rank:26, name:"프랙시스캐피탈파트너스", nameEn:"Praxis Capital Partners", aum:1.24, aumDisplay:"1.24조원", aumNote:"23개 기업, 14회 엑시트, IRR 44.1%", founder:"이관훈·라민상·윤준식 (2013)", ceo:"이관훈·라민상·윤준식 공동대표", keyPeople:["이관훈 대표","라민상 대표","윤준식 대표"], deals:[{name:"매스프레소(콴다)",year:"2021",note:""},{name:"시몬스침대",year:"투자",note:""},{name:"에이블씨엔씨",year:"투자",note:""},{name:"쿠캣",year:"2019",note:""},{name:"BBQ",year:"공동",note:""}], tier:"tier3" },
+  { rank:27, name:"웰투시인베스트먼트", nameEn:"Welltosea Investment", aum:1.02, aumDisplay:"1.02조원", aumNote:"누적 1조 178억, IRR 27.6%", founder:"정승원 (2014)", ceo:"정승원 대표", keyPeople:["정승원 대표","이남령 CIO"], deals:[{name:"엠앤씨솔루션",year:"보유",note:""},{name:"모트롤",year:"투자",note:""},{name:"HSD엔진",year:"투자",note:""},{name:"아주캐피탈",year:"투자",note:""},{name:"윌비에스엔티",year:"보유",note:""}], tier:"tier3" },
+  { rank:28, name:"LB프라이빗에쿼티", nameEn:"LB Private Equity", aum:1.0, aumDisplay:"약 1.0조원", aumNote:"LB인베스트먼트 계열", founder:"LB인베스트먼트", ceo:"이종호 대표", keyPeople:["이종호 대표"], deals:[{name:"LB세미콘",year:"투자",note:""},{name:"그로스 캐피탈",year:"다수",note:""}], tier:"tier3" },
+  { rank:29, name:"KB증권 PE", nameEn:"KB Securities PE", aum:1.0, aumDisplay:"약 1.0조원", aumNote:"메자닌+성장PE 통합", founder:"KB증권 PE본부", ceo:"KB증권 PE본부장", keyPeople:["KB증권 PE사업본부"], deals:[{name:"메자닌 다수",year:"지속",note:""},{name:"KB금융 시너지",year:"지속",note:""}], tier:"tier3" },
+  { rank:30, name:"어센트EP(PACM PE)", nameEn:"PACM Private Equity", aum:1.0, aumDisplay:"약 1.0조원", aumNote:"2025.12 PACM PE 사명변경", founder:"신홍재·신훈섭 (2020)", ceo:"신홍재·신훈섭 각자대표", keyPeople:["신홍재 대표","신훈섭 대표"], deals:[{name:"씨앤씨인터내셔널",year:"2025",note:"2,850억 인수"},{name:"미디어·엔터",year:"2024~2025",note:""},{name:"자산운용사",year:"2024~2025",note:""}], tier:"tier3" },
+  { rank:31, name:"코스톤아시아", nameEn:"Corstone Asia", aum:0.9, aumDisplay:"약 9,000억원", aumNote:"3호 5,000억 결성 추진", founder:"2009 설립", ceo:"최선호·조학주 각자대표", keyPeople:["최선호 대표","조학주 대표"], deals:[{name:"리클린",year:"엑시트",note:"IRR 44%"},{name:"디비아이",year:"엑시트",note:""},{name:"디앤티",year:"엑시트",note:""},{name:"엘이티",year:"엑시트",note:""}], tier:"tier3" },
+  { rank:32, name:"키스톤프라이빗에쿼티", nameEn:"Keystone PE", aum:0.85, aumDisplay:"약 8,500억원", aumNote:"PMI 전략 특화", founder:"현상순", ceo:"현상순·손창배 각자대표", keyPeople:["현상순 대표","손창배 대표"], deals:[{name:"현대자산운용",year:"보유",note:""},{name:"아시아경제",year:"2021",note:""},{name:"이랜드월드",year:"투자",note:""},{name:"한국토지신탁",year:"투자",note:""},{name:"무궁화신탁 등",year:"2024",note:"매각"}], tier:"tier3" },
+  { rank:33, name:"E&F PE", nameEn:"E&F Private Equity", aum:0.66, aumDisplay:"약 6,600억원", aumNote:"3호 펀드 조성 중", founder:"임태호 (2014)", ceo:"임태호 대표", keyPeople:["임태호 대표","정한 본부장"], deals:[{name:"KG ETS",year:"2022",note:"5,400억"},{name:"코엔텍",year:"투자",note:""},{name:"인선이엔티",year:"회수",note:"IRR 20%"},{name:"아이코닉스",year:"투자",note:"뽀로로"},{name:"새한환경",year:"Exit",note:""}], tier:"tier3" },
+  { rank:34, name:"케이클라비스", nameEn:"KCLAVIS Investment", aum:0.6, aumDisplay:"약 6,000억원", aumNote:"PE+VC 합산", founder:"김정국", ceo:"김정국 대표", keyPeople:["김정국 대표"], deals:[{name:"프로젝트 28건",year:"지속",note:""}], tier:"tier3" },
+  { rank:35, name:"KCGI자산운용 PE", nameEn:"KCGI Asset Mgmt PE", aum:0.5, aumDisplay:"약 5,000억원", aumNote:"행동주의 PE 특화", founder:"강성부 (2018)", ceo:"강성부 대표", keyPeople:["강성부 대표"], deals:[{name:"한진칼·대한항공",year:"2018~2022",note:"행동주의"},{name:"오스템 캠페인",year:"2022~",note:""},{name:"DB하이텍",year:"2022~",note:""},{name:"메리츠자산운용",year:"2023",note:"인수"},{name:"이베스트투자증권",year:"2024",note:"추진"}], tier:"tier3" },
+  { rank:36, name:"메리츠대체투자운용 PE", nameEn:"Meritz Alternative Investments PE", aum:0.5, aumDisplay:"약 5,000억원", aumNote:"전체 수탁고 4.1조 中 PE", founder:"메리츠금융지주 (2016)", ceo:"신준현 대표", keyPeople:["신준현 대표"], deals:[{name:"스페셜 시추에이션",year:"2024",note:""},{name:"인프라·부동산",year:"지속",note:""}], tier:"tier3" },
+  { rank:37, name:"노틱인베스트먼트", nameEn:"Nautic Investment", aum:0.4, aumDisplay:"약 4,000억원", aumNote:"11개 프로젝트+2개 블라인드", founder:"김성용 (2018)", ceo:"김성용 대표", keyPeople:["김성용 대표"], deals:[{name:"타임교육",year:"2025",note:"900억"},{name:"NHN에듀",year:"투자",note:"에듀테크"},{name:"노써치",year:"투자",note:""},{name:"중소기업 다수",year:"지속",note:""}], tier:"tier4" },
+  { rank:38, name:"솔본인베스트먼트", nameEn:"Solborn Investment", aum:0.3, aumDisplay:"약 3,000억원", aumNote:"솔본 100% 자회사", founder:"솔본 (2000)", ceo:"솔본 임원 겸직", keyPeople:["솔본 그룹"], deals:[{name:"와이즈넛",year:"장기보유",note:"AI"},{name:"삼영유니텍",year:"보유",note:""},{name:"휴비딕",year:"보유",note:""},{name:"와이브레인",year:"보유",note:""},{name:"스킨스탠다드",year:"보유",note:""}], tier:"tier4" },
+  { rank:39, name:"보고펀드자산운용", nameEn:"Vogo Fund AM", aum:0.3, aumDisplay:"추정", aumNote:"부동산·인프라 중심", founder:"변양호 (2005)", ceo:"이재우·박휘준 대표", keyPeople:["송영준 전무","한영혜 전무"], deals:[{name:"부동산·인프라",year:"지속",note:""},{name:"대체투자",year:"지속",note:""}], tier:"tier4" },
+  { rank:40, name:"큐로PE", nameEn:"Curo Private Equity", aum:0.3, aumDisplay:"추정", aumNote:"중소형 부티크", founder:"확인 필요", ceo:"확인 필요", keyPeople:["중소형 PE"], deals:[{name:"비공개 메자닌",year:"지속",note:""}], tier:"tier4" },
+  { rank:41, name:"프리미어파트너스", nameEn:"Premier Partners", aum:0.3, aumDisplay:"추정", aumNote:"2025 KDB 위탁운용사", founder:"확인 필요", ceo:"확인 필요", keyPeople:["중소형 PE"], deals:[{name:"KDB 혁신성장",year:"2025",note:""}], tier:"tier4" },
+  { rank:42, name:"케이앤투자파트너스(K&I)", nameEn:"K&I Investment Partners", aum:0.3, aumDisplay:"추정", aumNote:"중소형 VC/PE", founder:"확인 필요", ceo:"확인 필요", keyPeople:["중소형 PE"], deals:[{name:"성장형 다수",year:"지속",note:""}], tier:"tier4" },
+  { rank:43, name:"ST리더스PE", nameEn:"ST Leaders PE", aum:0.3, aumDisplay:"추정", aumNote:"부정사건 후 위축", founder:"확인 필요", ceo:"확인 필요", keyPeople:["중소형"], deals:[{name:"확인 필요",year:"N/A",note:"축소"}], tier:"tier4" },
+  { rank:44, name:"신한벤처투자 PE", nameEn:"Shinhan Venture Investment PE", aum:0.5, aumDisplay:"추정", aumNote:"신한금융 계열", founder:"신한금융그룹", ceo:"신한벤처투자 대표", keyPeople:["PE본부"], deals:[{name:"중견 메자닌",year:"지속",note:""},{name:"성장 자본",year:"지속",note:""}], tier:"tier4" },
+  { rank:45, name:"신한자산운용 대체투자", nameEn:"Shinhan AM Alternatives", aum:0.3, aumDisplay:"추정", aumNote:"대체투자 PE 부문", founder:"신한금융", ceo:"신한자산운용 대표", keyPeople:["대체투자 본부"], deals:[{name:"인프라·부동산·PE",year:"지속",note:""}], tier:"tier4" },
+  { rank:46, name:"한화자산운용 PE", nameEn:"Hanwha Asset Mgmt PE", aum:0.5, aumDisplay:"추정", aumNote:"전체 수탁고 100조 中", founder:"한화자산운용", ceo:"김종호 대표이사", keyPeople:["김종호 대표"], deals:[{name:"Growth/Buyout",year:"지속",note:""},{name:"한화 시너지",year:"지속",note:""}], tier:"tier4" },
+  { rank:47, name:"미래에셋캐피탈 PE", nameEn:"Mirae Asset Capital PE", aum:0.5, aumDisplay:"추정", aumNote:"미래에셋캐피탈 PE 사업부", founder:"미래에셋그룹", ceo:"미래에셋캐피탈 대표", keyPeople:["PE 사업부"], deals:[{name:"그룹 시너지 PE",year:"지속",note:""}], tier:"tier4" },
+  { rank:48, name:"베인캐피탈 코리아", nameEn:"Bain Capital Korea", aum:0, aumDisplay:"한국 별도펀드 없음 (글로벌)", aumNote:"글로벌 AUM 1,850억$", founder:"Bain Capital (1984 美)", ceo:"베인캐피탈코리아", keyPeople:["헬스케어·뷰티 한국팀"], deals:[{name:"카버코리아",year:"2016",note:"3.05조 매각"},{name:"휴젤",year:"2017",note:"1.72조 매각"},{name:"클래시스",year:"2022",note:"6,700억, 20배"},{name:"의료기기·뷰티 다수",year:"",note:""}], tier:"global" },
+  { rank:49, name:"칼라일그룹 코리아", nameEn:"The Carlyle Group Korea", aum:0, aumDisplay:"한국 별도펀드 없음 (글로벌)", aumNote:"글로벌 AUM 4,470억$", founder:"Carlyle (1987 美)", ceo:"정익수 한국대표(2026.04) / 김종윤 총괄대표", keyPeople:["정익수 한국 대표","김종윤 총괄대표","이규성 글로벌 CEO"], deals:[{name:"ADT캡스",year:"2014",note:"2.97조 매각"},{name:"투썸플레이스",year:"2021",note:"약 1조원"},{name:"KFC코리아",year:"2025",note:"100% 인수"},{name:"카카오모빌리티",year:"2021",note:"2,300억"},{name:"KB금융 EB",year:"2020",note:"2,400억"}], tier:"global" },
+  { rank:50, name:"액티스 코리아", nameEn:"Actis Korea", aum:0, aumDisplay:"한국 별도펀드 없음 (글로벌)", aumNote:"글로벌 AUM 250억$", founder:"Actis LLP (런던)", ceo:"성동윤 ADIK 대표", keyPeople:["성동윤 ADIK 대표"], deals:[{name:"에포크 디지털",year:"2024",note:"아시아 DC"},{name:"안양 40MW DC",year:"투자",note:""},{name:"양평동 DC",year:"투자",note:""},{name:"GS/현대 DC",year:"다수",note:""},{name:"신재생",year:"다수",note:""}], tier:"global" }
+];
+
+// ============= AUM Chart =============
+const chartData = peData.filter(p=>p.aum>0).sort((a,b)=>b.aum-a.aum);
+const colors = chartData.map((p,i) => i<3?'#1a2744':i<10?'#2c3e5d':i<20?'#2c7a7b':i<30?'#b7791f':'#9b6a47');
+new Chart(document.getElementById('aumChart'), {
+  type:'bar',
+  data:{labels:chartData.map(p=>p.name.length>14?p.name.substring(0,14)+'..':p.name), datasets:[{label:'AUM (조원)', data:chartData.map(p=>p.aum), backgroundColor:colors, borderRadius:3}]},
+  options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${chartData[c.dataIndex].aumDisplay} | ${chartData[c.dataIndex].aumNote}`}}}, scales:{x:{title:{display:true,text:'AUM (조원)'}, grid:{color:'#eef2f9'}}, y:{grid:{display:false}, ticks:{font:{size:10}}}}}
+});
+
+// ============= Detail Cards =============
+const grid = document.getElementById('cardGrid');
+const searchInput = document.getElementById('searchInput');
+const sortSelect = document.getElementById('sortSelect');
+const tierTabs = document.querySelectorAll('.tier-tab');
+let currentTier = 'all';
+
+function renderCards() {
+  const q = searchInput.value.toLowerCase().trim();
+  const sort = sortSelect.value;
+  let filtered = peData.slice();
+  if (currentTier!=='all') filtered = filtered.filter(p=>p.tier===currentTier);
+  if (q) filtered = filtered.filter(p=>(p.name+' '+p.nameEn+' '+p.founder+' '+p.ceo+' '+p.deals.map(d=>d.name).join(' ')+' '+p.keyPeople.join(' ')).toLowerCase().includes(q));
+  if (sort==='aum') filtered.sort((a,b)=>b.aum-a.aum);
+  else if (sort==='name') filtered.sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  else filtered.sort((a,b)=>a.rank-b.rank);
+
+  grid.innerHTML = filtered.map(p => `
+    <div class="card">
+      <div class="card-header">
+        <div><div><span class="card-rank">#${p.rank}</span></div><div class="card-name" style="margin-top:6px;">${p.name}</div><div class="card-name-en">${p.nameEn}</div></div>
+        <div class="card-aum">${p.aum>0?`<div class="num">${p.aumDisplay}</div><div class="unit">AUM</div>`:`<div class="aum-na">${p.aumDisplay}</div>`}</div>
+      </div>
+      <div class="card-section"><div class="label">창업자 / 대표이사</div><div class="content"><strong>창업:</strong> ${p.founder}<br><strong>대표:</strong> ${p.ceo}</div></div>
+      <div class="card-section"><div class="label">주요 인력</div><div class="content">${p.keyPeople.join(' · ')}</div></div>
+      <div class="card-section"><div class="label">AUM 상세</div><div class="content" style="font-size:11.5px;color:#5a6378;">${p.aumNote}</div></div>
+      <div class="card-section"><div class="label">대표 투자 포트폴리오</div><ul class="deals-list">${p.deals.map(d=>`<li><div><span class="deal-name">${d.name}</span>${d.year?` <span class="deal-meta">(${d.year})</span>`:''}${d.note?`<br><span class="deal-meta">${d.note}</span>`:''}</div></li>`).join('')}</ul></div>
+    </div>
+  `).join('') || '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#8089a0;">검색 결과가 없습니다.</div>';
+}
+searchInput.addEventListener('input', renderCards);
+sortSelect.addEventListener('change', renderCards);
+tierTabs.forEach(t => t.addEventListener('click', () => { tierTabs.forEach(x=>x.classList.remove('active')); t.classList.add('active'); currentTier=t.dataset.tier; renderCards(); }));
+renderCards();
+</script>
+</body>
+</html>
